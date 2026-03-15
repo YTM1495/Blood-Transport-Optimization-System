@@ -1,0 +1,7 @@
+bank_id,hospital_id,travel_time_minutes
+B1,H1,18
+B1,H2,25
+B2,H1,20
+B2,H2,15
+B3,H1,30
+B3,H2,22
