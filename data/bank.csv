@@ -1,0 +1,4 @@
+bank_id,bank_name,latitude,longitude,O_pos,O_neg,A_pos,A_neg,B_pos,B_neg,AB_pos,AB_neg
+B1,City Blood Bank,9.9312,76.2673,10,3,7,9,5,6,2,8
+B2,Red Cross Bank,9.9500,76.3000,8,2,6,4,9,7,10,3
+B3,Metro Blood Center,9.9100,76.2400,12,4,18,5,6,3,8,15
