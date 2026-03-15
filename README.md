@@ -1,1 +1,2 @@
 # Blood-Transport-Optimization-System
+A system that helps hospitals to optiimize the process of bringing blood from different blood banks on demand.It uses Transportation Model in Operations Research to minimize the total transportation time it takes to bring the blood.Along with that , it suggests the optimal combinations of blood banks and units of blood to be brought from, thereby optimizing decision making too. The system analyses real-time traffic delays when blood is requested by hospitals and generate the optimal combinations based on that.
