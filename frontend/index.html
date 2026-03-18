@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BloodRoute Central Server</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#060810;--bg1:#0b0d18;--bg2:#10142a;--bg3:#161c36;--bg4:#1e2540;
+  --br:rgba(99,120,255,0.12);--br2:rgba(99,120,255,0.22);--br3:rgba(99,120,255,0.38);
+  --tx:#dde3ff;--tx2:#6b78aa;--tx3:#363d5e;
+  --red:#ff4560;--rdim:rgba(255,69,96,0.12);--rbr:rgba(255,69,96,0.28);
+  --grn:#00e5a0;--gdim:rgba(0,229,160,0.08);--gbr:rgba(0,229,160,0.22);
+  --amb:#ffb340;--adim:rgba(255,179,64,0.10);--abr:rgba(255,179,64,0.24);
+  --blu:#4d9fff;--bdim:rgba(77,159,255,0.09);--bbr:rgba(77,159,255,0.22);
+  --pur:#a78bfa;--pdim:rgba(167,139,250,0.09);--pbr:rgba(167,139,250,0.22);
+  --f1:'Space Grotesk',sans-serif;--fm:'JetBrains Mono',monospace;
+  --r:8px;--r2:12px;--r3:16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--f1);}
+
+/* scanline */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.025)3px,rgba(0,0,0,0.025)4px);pointer-events:none;z-index:9999;}
+/* glow orbs */
+.orb{position:fixed;border-radius:50%;pointer-events:none;z-index:0;}
+.orb1{width:700px;height:700px;top:-200px;right:-200px;background:radial-gradient(circle,rgba(99,120,255,0.05)0%,transparent 65%);}
+.orb2{width:500px;height:500px;bottom:-150px;left:-100px;background:radial-gradient(circle,rgba(0,229,160,0.04)0%,transparent 65%);}
+
+/* ══ LAYOUT ══ */
+.shell{position:relative;z-index:1;display:grid;grid-template-rows:52px 1fr;grid-template-columns:250px 1fr;height:100vh;}
+
+/* ══ TOPBAR ══ */
+.topbar{grid-column:1/-1;display:flex;align-items:center;border-bottom:1px solid var(--br2);background:rgba(6,8,16,0.95);backdrop-filter:blur(24px);}
+.tb-brand{width:250px;border-right:1px solid var(--br2);height:100%;display:flex;align-items:center;gap:11px;padding:0 20px;flex-shrink:0;}
+.brand-icon{width:30px;height:30px;background:var(--red);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;position:relative;flex-shrink:0;animation:iconpulse 2.5s ease-in-out infinite;}
+@keyframes iconpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,69,96,0.5);}60%{box-shadow:0 0 0 8px rgba(255,69,96,0);}}
+.brand-txt{line-height:1.1;}
+.brand-name{font-size:15px;font-weight:700;letter-spacing:-0.3px;color:var(--tx);}
+.brand-sub{font-family:var(--fm);font-size:9px;color:var(--tx3);letter-spacing:0.12em;text-transform:uppercase;margin-top:1px;}
+.tb-stats{display:flex;align-items:center;gap:6px;padding:0 20px;flex:1;overflow:hidden;}
+.tb-stat{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--bg2);border:1px solid var(--br);border-radius:6px;font-family:var(--fm);font-size:11px;white-space:nowrap;}
+.tb-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tb-dot.r{background:var(--red);animation:blink 1.2s infinite;}
+.tb-dot.g{background:var(--grn);animation:blink 1.8s infinite 0.6s;}
+.tb-dot.a{background:var(--amb);}
+.tb-dot.b{background:var(--blu);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.25;}}
+.tb-lbl{color:var(--tx3);}
+.tb-val{color:var(--tx);font-weight:500;}
+.tb-right{display:flex;align-items:center;gap:10px;padding:0 20px;margin-left:auto;flex-shrink:0;}
+.trf-chip{font-family:var(--fm);font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid;transition:all 0.4s;white-space:nowrap;}
+.tb-clock{font-family:var(--fm);font-size:12px;color:var(--tx2);letter-spacing:0.04em;}
+
+/* ══ SIDEBAR ══ */
+.sidebar{background:var(--bg1);border-right:1px solid var(--br2);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+.sb-grp{padding:14px 10px 4px;font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.14em;}
+.nav{display:flex;align-items:center;gap:9px;margin:1px 7px;padding:9px 12px;border-radius:var(--r);font-size:13px;font-weight:400;color:var(--tx2);cursor:pointer;transition:all 0.14s;border:1px solid transparent;white-space:nowrap;}
+.nav:hover{background:var(--bg3);color:var(--tx);}
+.nav.on{background:var(--bg4);color:var(--tx);border-color:var(--br3);}
+.nav.on .ni{color:var(--red);}
+.ni{font-size:13px;width:17px;text-align:center;flex-shrink:0;}
+.nbadge{margin-left:auto;font-family:var(--fm);font-size:9px;padding:2px 6px;border-radius:3px;min-width:18px;text-align:center;font-weight:600;}
+.sb-footer{margin-top:auto;border-top:1px solid var(--br);padding:12px 18px;font-family:var(--fm);font-size:10px;color:var(--tx3);line-height:1.8;}
+
+/* ══ MAIN ══ */
+.main{overflow-y:auto;overflow-x:hidden;background:var(--bg);}
+.page{display:none;padding:24px 28px;min-height:100%;}
+.page.on{display:block;}
+
+/* PAGE HEADER */
+.phead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;}
+.ptitle{font-size:24px;font-weight:700;letter-spacing:-0.4px;line-height:1;}
+.psub{font-size:13px;color:var(--tx2);margin-top:5px;font-weight:300;}
+.phead-r{display:flex;gap:8px;align-items:center;}
+
+/* ══ METRICS ══ */
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
+.met{background:var(--bg2);border:1px solid var(--br);border-radius:var(--r2);padding:14px 16px;position:relative;overflow:hidden;cursor:default;transition:border-color 0.18s;}
+.met:hover{border-color:var(--br2);}
+.met::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.met.r::after{background:var(--red);}.met.g::after{background:var(--grn);}.met.a::after{background:var(--amb);}.met.b::after{background:var(--blu);}.met.p::after{background:var(--pur);}
+.met-lbl{font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;}
+.met-val{font-size:32px;font-weight:700;line-height:1;margin-bottom:3px;letter-spacing:-1px;}
+.met-val.r{color:var(--red);}.met-val.g{color:var(--grn);}.met-val.a{color:var(--amb);}.met-val.b{color:var(--blu);}.met-val.p{color:var(--pur);}
+.met-sub{font-size:11px;color:var(--tx2);}
+
+/* ══ GRID ══ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.g13{display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:14px;}
+.g31{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px;}
+.mb{margin-bottom:14px;}
+
+/* ══ CARD ══ */
+.card{background:var(--bg2);border:1px solid var(--br);border-radius:var(--r2);padding:18px 20px;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.ct{font-size:13px;font-weight:600;letter-spacing:-0.1px;color:var(--tx);}
+.cact{font-family:var(--fm);font-size:9px;color:var(--tx2);padding:3px 8px;border:1px solid var(--br);border-radius:4px;background:none;cursor:pointer;transition:all 0.14s;}
+.cact:hover{border-color:var(--br2);color:var(--tx);}
+
+/* ══ TAGS ══ */
+.tag{display:inline-flex;align-items:center;font-family:var(--fm);font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:0.04em;border:1px solid;}
+.tag.r{background:var(--rdim);color:var(--red);border-color:var(--rbr);}
+.tag.g{background:var(--gdim);color:var(--grn);border-color:var(--gbr);}
+.tag.a{background:var(--adim);color:var(--amb);border-color:var(--abr);}
+.tag.b{background:var(--bdim);color:var(--blu);border-color:var(--bbr);}
+.tag.p{background:var(--pdim);color:var(--pur);border-color:var(--pbr);}
+
+/* ══ BUTTONS ══ */
+.btn{padding:9px 18px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid;font-family:var(--f1);letter-spacing:0.01em;transition:all 0.15s;}
+.btn.red{background:var(--red);color:#fff;border-color:var(--red);}
+.btn.red:hover{filter:brightness(1.12);}
+.btn.grn{background:var(--grn);color:#000;border-color:var(--grn);font-weight:700;}
+.btn.grn:hover{filter:brightness(1.1);}
+.btn.ghost{background:transparent;color:var(--tx2);border-color:var(--br);}
+.btn.ghost:hover{background:var(--bg3);color:var(--tx);}
+.btn.blu{background:var(--bdim);color:var(--blu);border-color:var(--bbr);}
+.btn.blu:hover{background:rgba(77,159,255,0.16);}
+.btn.full{width:100%;}
+.btn.sm{padding:5px 12px;font-size:11px;}
+
+/* ══ FORMS ══ */
+.fg{margin-bottom:12px;}
+.fl{display:block;font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;}
+select,input[type=number],input[type=datetime-local]{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--br);border-radius:var(--r);color:var(--tx);font-size:12px;font-family:var(--f1);outline:none;transition:border-color 0.15s;-webkit-appearance:none;appearance:none;}
+select:focus,input:focus{border-color:var(--br3);}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+input[type=datetime-local]::-webkit-calendar-picker-indicator{filter:invert(0.45);cursor:pointer;}
+
+/* ══ TABLE ══ */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--tx3);padding:6px 10px;border-bottom:1px solid var(--br);text-align:left;font-weight:500;}
+.tbl td{padding:10px;border-bottom:1px solid var(--br);font-size:12px;color:var(--tx2);vertical-align:middle;}
+.tbl td.name{font-size:13px;font-weight:500;color:var(--tx);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(99,120,255,0.04);}
+
+/* ══ PRIORITY DOT ══ */
+.pdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.pdot.critical{background:var(--red);box-shadow:0 0 6px rgba(255,69,96,0.7);animation:blink 1s infinite;}
+.pdot.urgent{background:var(--amb);}
+.pdot.normal{background:var(--grn);}
+
+/* ══ ALERTS ══ */
+.alog{padding:9px 12px;border-radius:var(--r);margin-bottom:6px;border-left:3px solid;font-size:12px;}
+.alog:last-child{margin-bottom:0;}
+.alog.s{background:var(--gdim);border-color:var(--grn);}
+.alog.w{background:var(--adim);border-color:var(--amb);}
+.alog.d{background:var(--rdim);border-color:var(--red);}
+.al-t{font-weight:600;font-size:12px;margin-bottom:2px;}
+.al-b{font-size:11px;color:var(--tx2);line-height:1.4;}
+.al-s{font-family:var(--fm);font-size:9px;color:var(--tx3);margin-top:3px;}
+
+/* ══ TRANSPORT MATRIX ══ */
+.mx-wrap{overflow-x:auto;}
+.mx-tbl{border-collapse:collapse;font-family:var(--fm);font-size:11px;min-width:100%;}
+.mx-tbl th{padding:8px 14px;font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--tx3);border:1px solid var(--br);background:var(--bg3);text-align:center;white-space:nowrap;font-weight:500;}
+.mx-tbl th.row-h{text-align:left;min-width:120px;}
+.mx-tbl th.corner{background:var(--bg4);}
+.mx-tbl td{padding:9px 14px;border:1px solid var(--br);text-align:center;color:var(--tx2);vertical-align:middle;position:relative;}
+.mx-tbl td.row-label{text-align:left;background:var(--bg3);font-family:var(--f1);font-size:12px;font-weight:500;color:var(--tx);white-space:nowrap;}
+.mx-tbl td.sup-cell{background:var(--bg4);color:var(--tx3);font-size:10px;}
+.mx-tbl tr.dem-row td{background:var(--bg4);color:var(--tx3);font-size:10px;}
+.mx-tbl td.c-opt{background:rgba(0,229,160,0.1)!important;color:var(--grn)!important;font-weight:700;}
+.mx-tbl td.c-hi{color:var(--red)!important;}
+.mx-tbl td.c-zero{color:var(--tx3)!important;background:rgba(0,0,0,0.15)!important;}
+.alloc-badge{display:block;font-size:10px;font-weight:700;color:var(--grn);margin-bottom:1px;}
+.cost-note{display:block;font-size:9px;color:var(--tx3);}
+
+/* ══ SOLUTION ══ */
+.sol-banner{background:linear-gradient(135deg,rgba(0,229,160,0.08),rgba(0,229,160,0.03));border:1px solid var(--gbr);border-radius:var(--r2);padding:16px 20px;margin-bottom:16px;}
+.sol-lbl{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.12em;color:var(--grn);margin-bottom:6px;}
+.sol-title{font-size:20px;font-weight:700;letter-spacing:-0.3px;margin-bottom:12px;}
+.sol-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.sol-stat{background:rgba(0,0,0,0.25);border-radius:6px;padding:8px 10px;}
+.sol-stat-l{font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;}
+.sol-stat-v{font-size:17px;font-weight:700;color:var(--tx);}
+
+/* ══ ROUTE ROW ══ */
+.rr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);margin-bottom:6px;border:1px solid var(--br);transition:border-color 0.15s;}
+.rr:hover{border-color:var(--br2);}
+.rr.top{background:rgba(0,229,160,0.06);border-color:rgba(0,229,160,0.22);}
+.rr-rank{font-family:var(--fm);font-size:10px;color:var(--tx3);width:16px;flex-shrink:0;}
+.rr-body{flex:1;min-width:0;}
+.rr-route{font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.rr-meta{font-family:var(--fm);font-size:10px;color:var(--tx2);margin-top:2px;}
+.rr-units{font-family:var(--fm);font-size:13px;font-weight:700;color:var(--grn);flex-shrink:0;}
+.rr-time{font-family:var(--fm);font-size:10px;color:var(--tx2);flex-shrink:0;text-align:right;}
+
+/* ══ HOSP/BANK CARD IN SOLUTION ══ */
+.sb-card{padding:10px 12px;background:var(--bg3);border-radius:var(--r);margin-bottom:6px;border:1px solid var(--br);}
+.sb-card.ok{border-color:rgba(0,229,160,0.2);}
+.sb-card.warn{border-color:rgba(255,179,64,0.25);}
+
+/* ══ INVENTORY ══ */
+.inv-tbl{width:100%;border-collapse:collapse;}
+.inv-tbl th{font-family:var(--fm);font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--tx3);padding:6px 10px;border-bottom:1px solid var(--br);text-align:center;font-weight:500;}
+.inv-tbl th:first-child{text-align:left;}
+.inv-tbl td{padding:9px 10px;border-bottom:1px solid var(--br);font-size:12px;color:var(--tx2);font-family:var(--fm);text-align:center;}
+.inv-tbl td:first-child{text-align:left;color:var(--tx);font-family:var(--f1);font-size:13px;font-weight:500;}
+.inv-tbl tr:last-child td{border-bottom:none;}
+.inv-tbl tr:hover td{background:rgba(99,120,255,0.04);}
+.cv{color:var(--grn)!important;}.ca2{color:var(--amb)!important;}.clo{color:var(--red)!important;font-weight:600;}.cz{color:var(--tx3)!important;}
+
+/* ══ TRAF BARS ══ */
+.trf-bars{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;align-items:end;height:36px;}
+.trf-bar{border-radius:2px 2px 0 0;min-height:3px;}
+
+/* ══ STEP ══ */
+.steps{display:flex;flex-direction:column;}
+.step{display:flex;gap:12px;padding:8px 0;position:relative;}
+.svl{position:absolute;left:12px;top:28px;bottom:0;width:1px;background:var(--br);}
+.step:last-child .svl{display:none;}
+.sn{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10px;font-weight:700;flex-shrink:0;z-index:1;}
+.sn.d{background:var(--gdim);color:var(--grn);border:1px solid var(--gbr);}
+.sn.a{background:var(--rdim);color:var(--red);border:1px solid var(--rbr);}
+.sn.w{background:var(--bg3);color:var(--tx3);border:1px solid var(--br);}
+.sb2{flex:1;padding-top:3px;}
+.st2{font-size:12px;font-weight:600;margin-bottom:2px;}
+.sd2{font-size:11px;color:var(--tx2);line-height:1.45;}
+
+/* ══ EMPTY ══ */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;color:var(--tx3);text-align:center;gap:8px;}
+.empty-i{font-size:36px;opacity:0.18;}
+.empty-t{font-size:13px;}
+
+/* ══ CONFIRM BANNER ══ */
+.confirm-banner{background:var(--gdim);border:1px solid var(--gbr);border-radius:var(--r2);padding:24px;text-align:center;margin-bottom:16px;}
+
+/* ══ PROGRESS ══ */
+.prog-bar{background:var(--bg4);border-radius:3px;height:5px;overflow:hidden;margin-top:7px;}
+.prog-fill{height:100%;border-radius:3px;transition:width 0.6s;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--br2);border-radius:2px;}
+
+@media(max-width:1000px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .metrics{grid-template-columns:repeat(3,1fr);}
+  .g2,.g13,.g31{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="shell">
+
+<!-- ══════ TOPBAR ══════ -->
+<header class="topbar">
+  <div class="tb-brand">
+    <div class="brand-icon">✚</div>
+    <div class="brand-txt">
+      <div class="brand-name">BloodRoute Central</div>
+      <div class="brand-sub">National Server v2.0</div>
+    </div>
+  </div>
+  <div class="tb-stats">
+    <div class="tb-stat"><div class="tb-dot r"></div><span class="tb-lbl">Pending:</span><span class="tb-val" id="tb-pend">0</span></div>
+    <div class="tb-stat"><div class="tb-dot g"></div><span class="tb-lbl">Dispatched:</span><span class="tb-val" id="tb-disp">0</span></div>
+    <div class="tb-stat"><div class="tb-dot a"></div><span class="tb-lbl">Banks:</span><span class="tb-val">6 online</span></div>
+    <div class="tb-stat"><div class="tb-dot b"></div><span class="tb-lbl">Last solve:</span><span class="tb-val" id="tb-solve">—</span></div>
+  </div>
+  <div class="tb-right">
+    <div class="trf-chip" id="trf-chip">● —</div>
+    <div class="tb-clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ══════ SIDEBAR ══════ -->
+<nav class="sidebar">
+  <div class="sb-grp">Operations</div>
+  <div class="nav on" onclick="go('dash',this)"><span class="ni">◉</span>Central Dashboard<span class="nbadge" id="nb1" style="background:var(--red);color:#fff;">0</span></div>
+  <div class="nav" onclick="go('requests',this)"><span class="ni">⊕</span>Incoming Requests<span class="nbadge" id="nb2" style="background:var(--amb);color:#000;">0</span></div>
+  <div class="sb-grp">Solver</div>
+  <div class="nav" onclick="go('solver',this)"><span class="ni">◈</span>Transportation Solver</div>
+  <div class="nav" onclick="go('matrix',this)"><span class="ni">⊞</span>Cost Matrix</div>
+  <div class="sb-grp">Data</div>
+  <div class="nav" onclick="go('inventory',this)"><span class="ni">≡</span>Blood Bank Inventory</div>
+  <div class="sb-footer">
+    <div>6 blood banks registered</div>
+    <div>8 hospitals connected</div>
+    <div id="sb-date" style="margin-top:4px;color:var(--tx3);"></div>
+  </div>
+</nav>
+
+<!-- ══════ MAIN ══════ -->
+<main class="main">
+
+<!-- ══ DASHBOARD ══ -->
+<div id="pg-dash" class="page on">
+  <div class="phead">
+    <div><div class="ptitle">Central Operations</div><div class="psub">All hospital requests · transportation optimizer · live inventory</div></div>
+    <div class="phead-r"><button class="btn blu" onclick="go('solver',document.querySelector('[onclick*=solver]'))">▶ Open Solver</button></div>
+  </div>
+  <div class="metrics">
+    <div class="met r"><div class="met-lbl">Pending requests</div><div class="met-val r" id="dm-pend">0</div><div class="met-sub">awaiting dispatch</div></div>
+    <div class="met a"><div class="met-lbl">Units demanded</div><div class="met-val a" id="dm-dem">0</div><div class="met-sub">across all hospitals</div></div>
+    <div class="met g"><div class="met-lbl">Units available</div><div class="met-val g" id="dm-sup">0</div><div class="met-sub">across all banks</div></div>
+    <div class="met b"><div class="met-lbl">Dispatched today</div><div class="met-val b" id="dm-disp">0</div><div class="met-sub">confirmed</div></div>
+    <div class="met p"><div class="met-lbl">Last optimal cost</div><div class="met-val p" id="dm-cost">—</div><div class="met-sub">unit·min</div></div>
+  </div>
+  <div class="g2">
+    <div class="card mb">
+      <div class="ch"><div class="ct">Pending hospital requests</div><span class="tag r" id="d-rtag">0 pending</span></div>
+      <div id="d-rlist"><div class="empty"><div class="empty-i">◎</div><div class="empty-t">No requests yet.<br>Submit from Incoming Requests.</div></div></div>
+    </div>
+    <div class="card mb">
+      <div class="ch"><div class="ct">System log</div><button class="cact" onclick="clearLog()">clear</button></div>
+      <div id="d-log"><div class="alog s"><div class="al-t">Server online</div><div class="al-b">BloodRoute Central ready. 6 banks connected, 8 hospitals registered.</div><div class="al-s">just now</div></div></div>
+    </div>
+  </div>
+  <div class="card mb">
+    <div class="ch"><div class="ct">Supply vs demand snapshot — all blood types</div></div>
+    <canvas id="dash-chart" height="55"></canvas>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ct">Confirmed dispatches</div><span class="nbadge" id="d-dbadge" style="background:var(--grn);color:#000;font-family:var(--fm);font-size:9px;padding:2px 8px;border-radius:3px;">0</span></div>
+    <div id="d-dlist"><div class="empty" style="padding:20px;"><div class="empty-t">No dispatches confirmed yet.</div></div></div>
+  </div>
+</div>
+
+<!-- ══ REQUESTS ══ -->
+<div id="pg-requests" class="page">
+  <div class="phead">
+    <div><div class="ptitle">Incoming Requests</div><div class="psub">Hospital blood requests queued for batch solver</div></div>
+  </div>
+  <div class="g13" style="align-items:start;">
+    <!-- form -->
+    <div class="card">
+      <div class="ch"><div class="ct">Submit request</div><span class="tag r">hospital portal</span></div>
+      <div class="fg"><label class="fl">Hospital</label>
+        <select id="rq-h">
+          <option value="0">City General Hospital</option>
+          <option value="1">Westside Medical Center</option>
+          <option value="2">North Valley Clinic</option>
+          <option value="3">Memorial Hospital</option>
+          <option value="4">Eastbrook Surgery Center</option>
+          <option value="5">St. Luke's Medical</option>
+          <option value="6">Riverside Health Center</option>
+          <option value="7">Central Children's Hospital</option>
+        </select>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Blood type</label>
+          <select id="rq-bt"><option>O−</option><option>O+</option><option>A−</option><option>A+</option><option>B−</option><option>B+</option><option>AB−</option><option>AB+</option></select>
+        </div>
+        <div class="fg"><label class="fl">Units needed</label><input type="number" id="rq-u" value="4" min="1" max="80"/></div>
+      </div>
+      <div class="fg"><label class="fl">Department</label>
+        <select id="rq-dept"><option>Emergency/Trauma</option><option>Surgery</option><option>ICU</option><option>Maternity</option><option>Oncology</option><option>Pediatrics</option></select>
+      </div>
+      <div class="fg"><label class="fl">Priority</label>
+        <select id="rq-prio"><option value="critical">Critical — immediate</option><option value="urgent">Urgent — 30 min</option><option value="normal">Routine — 2h</option></select>
+      </div>
+      <div class="fg"><label class="fl">Request time (blank = now)</label><input type="datetime-local" id="rq-dt" onchange="updateTrfPrev()"/></div>
+      <!-- traffic preview -->
+      <div id="trf-prev" style="background:var(--bg3);border:1px solid var(--br);border-radius:var(--r);padding:10px 12px;margin-bottom:12px;">
+        <div style="font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Auto-detected traffic</div>
+        <div id="trf-prev-body" style="font-size:11px;color:var(--tx3);">Set time to preview.</div>
+      </div>
+      <button class="btn red full" onclick="addReq()">+ Queue request</button>
+      <button class="btn ghost full" style="margin-top:8px;" onclick="loadDemo()">Load demo requests (8 hospitals)</button>
+    </div>
+    <!-- queue list -->
+    <div class="card">
+      <div class="ch">
+        <div class="ct">Request queue</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="tag a" id="rq-ctag">0 queued</span>
+          <button class="cact" onclick="clearReqs()">clear all</button>
+        </div>
+      </div>
+      <div id="rq-list"><div class="empty"><div class="empty-i">◎</div><div class="empty-t">No requests queued yet.</div></div></div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--br);">
+        <button class="btn grn full" onclick="go('solver',document.querySelector('[onclick*=solver]'))">▶ Run solver on queued requests →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SOLVER ══ -->
+<div id="pg-solver" class="page">
+  <div class="phead">
+    <div><div class="ptitle">Transportation Solver</div><div class="psub">Vogel's Approximation Method · demand–supply matrix across all hospitals & banks</div></div>
+    <div class="phead-r"><button class="btn red" onclick="runSolver()">▶ Solve now</button></div>
+  </div>
+
+  <!-- Pre-solve summary -->
+  <div id="pre-card" class="card mb">
+    <div class="ch"><div class="ct">Aggregated demand summary</div><span class="tag b" id="sv-status">ready</span></div>
+    <div id="pre-body"><div class="empty" style="padding:20px;"><div class="empty-t">Add requests then click "Solve now".</div></div></div>
+  </div>
+
+  <!-- Result (hidden until solved) -->
+  <div id="sol-result" style="display:none;">
+    <div class="sol-banner">
+      <div class="sol-lbl">Optimal solution — Vogel's Approximation Method</div>
+      <div class="sol-title" id="sol-title">—</div>
+      <div class="sol-stats">
+        <div class="sol-stat"><div class="sol-stat-l">Total cost</div><div class="sol-stat-v" id="sol-cost" style="color:var(--grn);">—</div></div>
+        <div class="sol-stat"><div class="sol-stat-l">Routes used</div><div class="sol-stat-v" id="sol-routes">—</div></div>
+        <div class="sol-stat"><div class="sol-stat-l">Banks involved</div><div class="sol-stat-v" id="sol-banks">—</div></div>
+        <div class="sol-stat"><div class="sol-stat-l">Traffic factor</div><div class="sol-stat-v" id="sol-trf" style="color:var(--amb);">—</div></div>
+      </div>
+    </div>
+
+    <!-- Full transport matrix with allocations -->
+    <div class="card mb">
+      <div class="ch"><div class="ct">Transportation matrix — units allocated per route</div><span class="tag g">VAM optimal · green = allocated</span></div>
+      <div class="mx-wrap" id="sol-matrix-wrap"></div>
+    </div>
+
+    <div class="g2">
+      <div class="card mb">
+        <div class="ch"><div class="ct">Optimal dispatch routes</div><span class="tag g">sorted by ETA</span></div>
+        <div id="sol-routes-list"></div>
+      </div>
+      <div class="card mb">
+        <div class="ch"><div class="ct">Hospital fulfilment status</div></div>
+        <div id="sol-hosp-list"></div>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="card mb">
+        <div class="ch"><div class="ct">Per-bank dispatch summary</div></div>
+        <div id="sol-bank-list"></div>
+      </div>
+      <div class="card mb">
+        <div class="ch"><div class="ct">Algorithm steps</div></div>
+        <div class="steps">
+          <div class="step"><div class="sn d">1</div><div class="sb2"><div class="st2">Aggregate demand</div><div class="sd2">All pending requests grouped by hospital &amp; blood type into a demand vector.</div></div><div class="svl"></div></div>
+          <div class="step"><div class="sn d">2</div><div class="sb2"><div class="st2">Build adjusted cost matrix</div><div class="sd2">Travel times (base) × traffic multiplier at request hour for all bank→hospital routes.</div></div><div class="svl"></div></div>
+          <div class="step"><div class="sn a">3</div><div class="sb2"><div class="st2">Vogel's approximation (VAM)</div><div class="sd2">Penalty differences computed for rows &amp; columns. Allocation made to min-cost cell in max-penalty row/col.</div></div><div class="svl"></div></div>
+          <div class="step"><div class="sn w">4</div><div class="sb2"><div class="st2">MODI optimality check</div><div class="sd2">Modified Distribution Method verifies no further improvement is possible.</div></div><div class="svl"></div></div>
+          <div class="step"><div class="sn w">5</div><div class="sb2"><div class="st2">Confirm &amp; update inventory</div><div class="sd2">Units deducted from each source bank; dashboard &amp; inventory updated in real-time.</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div id="sol-shortage-block"></div>
+    <button class="btn grn full" onclick="confirmDispatch()">✓ Confirm all dispatches &amp; update inventory</button>
+  </div>
+</div>
+
+<!-- ══ MATRIX ══ -->
+<div id="pg-matrix" class="page">
+  <div class="phead">
+    <div><div class="ptitle">Cost Matrix</div><div class="psub">Traffic-adjusted travel times (min) · all banks × all hospitals</div></div>
+    <div class="phead-r" style="align-items:center;gap:10px;">
+      <span style="font-family:var(--fm);font-size:11px;color:var(--tx2);">Hour:</span>
+      <input type="range" min="0" max="23" value="8" id="mx-hr" oninput="renderCostMatrix(+this.value)" style="width:110px;"/>
+      <span id="mx-hr-lbl" style="font-family:var(--fm);font-size:11px;color:var(--tx);min-width:54px;">8:00 am</span>
+    </div>
+  </div>
+  <div class="card mb">
+    <div class="ch"><div class="ct">Full bank × hospital matrix</div><span class="tag b">traffic-adjusted</span></div>
+    <div class="mx-wrap"><table class="mx-tbl" id="mx-full"></table></div>
+  </div>
+  <div class="g2">
+    <div class="card mb">
+      <div class="ch"><div class="ct">VAM allocation (current hour)</div><span class="tag g">optimal</span></div>
+      <div id="mx-vam"></div>
+    </div>
+    <div class="card mb">
+      <div class="ch"><div class="ct">Hourly traffic profile</div></div>
+      <canvas id="mx-chart" height="85"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══ INVENTORY ══ -->
+<div id="pg-inventory" class="page">
+  <div class="phead">
+    <div><div class="ptitle">Blood Bank Inventory</div><div class="psub">Live stock — deducted automatically on dispatch confirmation</div></div>
+  </div>
+  <div class="card mb">
+    <div class="ch"><div class="ct">Current stock — units per blood type</div><span class="tag" id="inv-tag">0 alerts</span></div>
+    <div style="overflow-x:auto;">
+      <table class="inv-tbl">
+        <thead><tr><th>Blood bank</th><th>O−</th><th>O+</th><th>A−</th><th>A+</th><th>B−</th><th>B+</th><th>AB−</th><th>AB+</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody id="inv-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ct">Supply per blood type</div></div>
+    <canvas id="inv-chart" height="65"></canvas>
+  </div>
+</div>
+
+</main>
+</div><!-- shell -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════
+const BANKS = ['Central Bank','East Bank','North Bank','South Bank','West Bank','Valley Bank'];
+const HOSPITALS = ['City General Hospital','Westside Medical Center','North Valley Clinic',
+  'Memorial Hospital','Eastbrook Surgery Center',"St. Luke's Medical",
+  'Riverside Health Center','Central Children\'s Hospital'];
+const H_SHORT = ['City General','Westside Med','N.Valley','Memorial','Eastbrook','St.Luke\'s','Riverside','Children\'s'];
+const BT = ['O−','O+','A−','A+','B−','B+','AB−','AB+'];
+
+// Base travel time matrix [bank 0..5][hospital 0..7] minutes
+const BASE = [
+  [12,22,18,30,25,20,35,14],
+  [20,14,25,16,32,28,18,24],
+  [18,10, 8,24,20,15,30,22],
+  [28,20,14,10,18,25,22,32],
+  [24,16,12,20,14,18,28,26],
+  [30,26,20,18,22,12,16,28]
+];
+
+// Traffic multiplier [hour 0..23]
+const TM = [1.0,1.0,1.0,1.0,1.0,1.1,1.3,1.7,2.1,1.8,1.4,1.2,1.3,1.4,1.4,1.5,1.7,2.0,1.8,1.5,1.3,1.2,1.1,1.0];
+const TL = ['Free','Free','Free','Free','Free','Light','Light','Moderate','Heavy','Heavy','Moderate','Light','Light','Moderate','Moderate','Moderate','Moderate','Heavy','Heavy','Moderate','Light','Light','Light','Free'];
+
+// Mutable inventory [bank 0..5][bt 0..7]
+const INV = [
+  [12,30, 8,25, 5,18, 4,10],
+  [ 5,15, 3,12, 2, 9, 1, 6],
+  [ 8,20, 6,18, 3,11, 3, 8],
+  [ 7,18, 4,14, 4,13, 2, 7],
+  [ 9,22, 5,16, 3,10, 2, 5],
+  [10,25, 7,20, 4,14, 3, 9]
+];
+
+// State
+let REQS = [];       // pending requests
+let DISPATCHES = []; // confirmed dispatch batches
+let LAST_SOL = null; // last solver result
+let DISP_CNT = 0;
+let REQ_ID = 1;
+let mxChart = null, invChart = null, dashChart = null;
+
+// ═══════════════════════════════════════════════════
+// TRAFFIC
+// ═══════════════════════════════════════════════════
+function trf(h){
+  const m=TM[h], l=TL[h];
+  let c='var(--grn)',bg='var(--gdim)',bc='var(--gbr)';
+  if(m>=1.7){c='var(--red)';bg='var(--rdim)';bc='var(--rbr)';}
+  else if(m>=1.3){c='var(--amb)';bg='var(--adim)';bc='var(--abr)';}
+  return{m,l,c,bg,bc};
+}
+function hl(h){return h===0?'12:00am':h<12?h+':00am':h===12?'12:00pm':(h-12)+':00pm';}
+
+function tick(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour12:false});
+  const{m,l,c,bg,bc}=trf(now.getHours());
+  const el=document.getElementById('trf-chip');
+  el.textContent='● '+l; el.style.color=c; el.style.background=bg; el.style.borderColor=bc;
+  document.getElementById('sb-date').textContent=now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+setInterval(tick,1000); tick();
+
+function updateTrfPrev(){
+  const dv=document.getElementById('rq-dt').value;
+  const h=dv?new Date(dv).getHours():new Date().getHours();
+  const{m,l,c}=trf(h);
+  const delay=Math.round((m-1)*100);
+  const bars=TM.map((v,i)=>{
+    const ht=Math.max(3,Math.round((v-0.9)/1.2*28));
+    const col=v>=1.7?'var(--red)':v>=1.3?'var(--amb)':'var(--grn)';
+    return`<div class="trf-bar" style="height:${ht}px;background:${col};opacity:${i===h?1:0.22};"></div>`;
+  }).join('');
+  document.getElementById('trf-prev-body').innerHTML=
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+       <span style="color:${c};font-weight:600;">${l} at ${hl(h)}</span>
+       <span style="font-family:var(--fm);font-size:11px;color:${c};">${m.toFixed(1)}× (+${delay}%)</span>
+     </div><div class="trf-bars">${bars}</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// VOGEL'S APPROXIMATION METHOD (VAM)
+// costs[R][C], supply[R], demand[C]
+// ═══════════════════════════════════════════════════
+function vogel(costs, sup, dem){
+  const R=costs.length, C=costs[0].length;
+  const s=sup.map(Number), d=dem.map(Number);
+  const rD=Array(R).fill(false), cD=Array(C).fill(false);
+  const res=[];
+  for(let it=0;it<R+C+10;it++){
+    const aR=s.map((v,i)=>!rD[i]&&v>0);
+    const aC=d.map((v,j)=>!cD[j]&&v>0);
+    if(!aR.some(Boolean)||!aC.some(Boolean)) break;
+    // row penalties
+    const rp=costs.map((row,i)=>{
+      if(!aR[i]) return{p:-1,i};
+      const v=row.map((c,j)=>aC[j]?c:Infinity).filter(x=>x<Infinity).sort((a,b)=>a-b);
+      return{p:v.length>=2?v[1]-v[0]:v.length===1?99999:-1,i};
+    });
+    // col penalties
+    const cp=Array.from({length:C},(_,j)=>{
+      if(!aC[j]) return{p:-1,j};
+      const v=costs.map((row,i)=>aR[i]?row[j]:Infinity).filter(x=>x<Infinity).sort((a,b)=>a-b);
+      return{p:v.length>=2?v[1]-v[0]:v.length===1?99999:-1,j};
+    });
+    const bR=rp.reduce((a,b)=>b.p>a.p?b:a,{p:-1,i:-1});
+    const bC=cp.reduce((a,b)=>b.p>a.p?b:a,{p:-1,j:-1});
+    if(bR.p<0&&bC.p<0) break;
+    let bi=-1,bj=-1;
+    if(bR.p>=bC.p){
+      bi=bR.i; let mv=Infinity;
+      costs[bi].forEach((v,j)=>{if(aC[j]&&v<mv){mv=v;bj=j;}});
+    } else {
+      bj=bC.j; let mv=Infinity;
+      costs.forEach((row,i)=>{if(aR[i]&&row[bj]<mv){mv=row[bj];bi=i;}});
+    }
+    if(bi<0||bj<0) break;
+    const units=Math.min(s[bi],d[bj]);
+    if(units>0) res.push({bi,bj,units,cost:costs[bi][bj]});
+    s[bi]-=units; d[bj]-=units;
+    if(s[bi]<=0) rD[bi]=true;
+    if(d[bj]<=0) cD[bj]=true;
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════════════════
+// AGGREGATE + SOLVE
+// ═══════════════════════════════════════════════════
+function aggregateDemand(){
+  // btd[hospIdx][btIdx] = total units demanded
+  const btd=Array.from({length:8},()=>Array(8).fill(0));
+  REQS.forEach(r=>{ btd[r.hi][r.bti]+=r.units; });
+  const hospDem=btd.map(row=>row.reduce((s,v)=>s+v,0));
+  const totalUnits=hospDem.reduce((s,v)=>s+v,0);
+  const hour=REQS.length?REQS[0].hour:new Date().getHours();
+  const{m:mult,l:trfLbl,c:trfC}=trf(hour);
+  return{btd,hospDem,totalUnits,hour,mult,trfLbl,trfC};
+}
+
+function runSolver(){
+  if(!REQS.length){
+    addLog('w','No requests','Add hospital requests before running the solver.');
+    go('requests',document.querySelector('[onclick*=requests]'));
+    return;
+  }
+  const{btd,hospDem,totalUnits,hour,mult,trfLbl,trfC}=aggregateDemand();
+  renderPreSolve(btd,hospDem,totalUnits,mult,trfLbl,trfC,hour);
+
+  // Adjusted cost matrix [6 banks][8 hospitals]
+  const adjC=BASE.map(row=>row.map(v=>Math.round(v*mult)));
+
+  // alloc[bi][hi] = {btUnits:{btIdx:n}, total}
+  const alloc=Array.from({length:6},()=>Array.from({length:8},()=>({btU:{},total:0})));
+  let totalCost=0;
+  const shortages=[];
+
+  BT.forEach((_,bti)=>{
+    const dem=btd.map(row=>row[bti]);
+    const totalD=dem.reduce((s,v)=>s+v,0);
+    if(!totalD) return;
+    const sup=INV.map(row=>row[bti]);
+    const totalS=sup.reduce((s,v)=>s+v,0);
+    if(!totalS){
+      shortages.push({bt:BT[bti],needed:totalD});
+      addLog('d',`No ${BT[bti]} available`,`All banks out of ${BT[bti]}. Cannot fulfil ${totalD} units.`);
+      return;
+    }
+    const assigns=vogel(adjC,[...sup],[...dem]);
+    assigns.forEach(a=>{
+      if(!alloc[a.bi][a.bj].btU[bti]) alloc[a.bi][a.bj].btU[bti]=0;
+      alloc[a.bi][a.bj].btU[bti]+=a.units;
+      alloc[a.bi][a.bj].total+=a.units;
+      totalCost+=a.units*a.cost;
+    });
+  });
+
+  // Build routes list
+  const routes=[];
+  alloc.forEach((row,bi)=>row.forEach((cell,hi)=>{
+    if(cell.total>0) routes.push({bi,hi,btU:cell.btU,total:cell.total,
+      adjTime:adjC[bi][hi],baseTime:BASE[bi][hi],delay:adjC[bi][hi]-BASE[bi][hi]});
+  }));
+  routes.sort((a,b)=>a.adjTime-b.adjTime);
+
+  // Hospital fulfilment
+  const hFul=HOSPITALS.map((_,hi)=>{
+    const dem=btd[hi].reduce((s,v)=>s+v,0);
+    const got=routes.filter(r=>r.hi===hi).reduce((s,r)=>s+r.total,0);
+    const btBreak={};
+    routes.filter(r=>r.hi===hi).forEach(r=>Object.entries(r.btU).forEach(([bti,n])=>{
+      btBreak[bti]=(btBreak[bti]||0)+n;
+    }));
+    return{dem,got,btBreak};
+  });
+
+  // Bank dispatch
+  const bDisp=BANKS.map((_,bi)=>{
+    const total=routes.filter(r=>r.bi===bi).reduce((s,r)=>s+r.total,0);
+    const hosps=[...new Set(routes.filter(r=>r.bi===bi).map(r=>HOSPITALS[r.hi]))];
+    const btBreak={};
+    routes.filter(r=>r.bi===bi).forEach(r=>Object.entries(r.btU).forEach(([bti,n])=>{
+      btBreak[bti]=(btBreak[bti]||0)+n;
+    }));
+    return{total,hosps,btBreak};
+  });
+
+  LAST_SOL={routes,hFul,bDisp,totalCost,mult,trfLbl,alloc,adjC,btd,totalUnits,shortages};
+  renderSolution(LAST_SOL);
+
+  document.getElementById('dm-cost').textContent=totalCost;
+  document.getElementById('tb-solve').textContent=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+  addLog('s','Solver completed',`VAM: ${routes.length} routes · ${totalUnits} units · cost ${totalCost} unit·min`);
+}
+
+function renderPreSolve(btd,hospDem,totalUnits,mult,trfLbl,trfC,hour){
+  document.getElementById('sv-status').textContent='solving…';
+  document.getElementById('sv-status').className='tag a';
+  const active=HOSPITALS.map((h,i)=>({h,i,d:hospDem[i]})).filter(x=>x.d>0);
+  if(!active.length){
+    document.getElementById('pre-body').innerHTML='<div class="empty" style="padding:20px;"><div class="empty-t">No demand.</div></div>';
+    return;
+  }
+  const rows=active.map(({h,i,d})=>{
+    const chips=btd[i].map((v,bi)=>v>0?`<span style="display:inline-block;background:rgba(255,69,96,0.12);color:var(--red);border:1px solid rgba(255,69,96,0.28);border-radius:3px;padding:1px 6px;font-family:var(--fm);font-size:10px;font-weight:600;margin:2px;">${BT[bi]}:${v}</span>`:''  ).filter(Boolean).join('');
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:var(--r);margin-bottom:6px;border:1px solid var(--br);">
+      <div style="flex:1;"><div style="font-size:13px;font-weight:500;">${h}</div><div style="margin-top:4px;">${chips}</div></div>
+      <div style="font-family:var(--fm);font-size:14px;font-weight:700;color:var(--amb);">${d}u</div></div>`;
+  }).join('');
+  document.getElementById('pre-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+      <div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;border:1px solid var(--br);">
+        <div style="font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px;">Total demand</div>
+        <div style="font-size:22px;font-weight:700;color:var(--amb);">${totalUnits} units</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;border:1px solid var(--br);">
+        <div style="font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px;">Hospitals requesting</div>
+        <div style="font-size:22px;font-weight:700;color:var(--blu);">${active.length}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;border:1px solid var(--br);">
+        <div style="font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;margin-bottom:4px;">Traffic at ${hl(hour)}</div>
+        <div style="font-size:22px;font-weight:700;color:${trfC};">${mult.toFixed(1)}×</div>
+      </div>
+    </div>
+    <div style="font-family:var(--fm);font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Per-hospital demand</div>${rows}`;
+}
+
+function renderSolution(sol){
+  document.getElementById('sol-result').style.display='block';
+  document.getElementById('pre-card').style.display='none';
+  document.getElementById('sv-status').textContent='solved';
+  document.getElementById('sv-status').className='tag g';
+
+  const{routes,hFul,bDisp,totalCost,mult,trfLbl,alloc,adjC,btd,totalUnits}=sol;
+  const banksUsed=new Set(routes.map(r=>r.bi)).size;
+
+  document.getElementById('sol-title').textContent=`${routes.length} optimal routes · ${totalUnits} units allocated`;
+  document.getElementById('sol-cost').textContent=totalCost+' unit·min';
+  document.getElementById('sol-routes').textContent=routes.length;
+  document.getElementById('sol-banks').textContent=banksUsed+' / 6';
+  document.getElementById('sol-trf').textContent=mult.toFixed(1)+'× — '+trfLbl;
+
+  // ── TRANSPORT MATRIX WITH ALLOCATIONS ──
+  // Rows = banks, Cols = hospitals that have demand
+  const activeCols=HOSPITALS.map((_,hi)=>hFul[hi].dem>0?hi:-1).filter(x=>x>=0);
+  let mxHtml=`<table class="mx-tbl">
+    <thead><tr><th class="corner row-h">Bank \\ Hospital</th>
+    ${activeCols.map(hi=>`<th>${H_SHORT[hi]}</th>`).join('')}
+    <th>Supply</th></tr></thead><tbody>`;
+  BANKS.forEach((b,bi)=>{
+    const rowTotal=routes.filter(r=>r.bi===bi).reduce((s,r)=>s+r.total,0);
+    const bankSup=INV[bi].reduce((s,v)=>s+v,0);
+    mxHtml+=`<tr><td class="row-label">${b}</td>`;
+    activeCols.forEach(hi=>{
+      const cell=alloc[bi][hi];
+      const adjTime=adjC[bi][hi];
+      const hasAlloc=cell.total>0;
+      const isHi=adjTime>30&&!hasAlloc;
+      mxHtml+=`<td class="${hasAlloc?'c-opt':isHi?'c-hi':adjTime===0?'c-zero':''}">
+        ${hasAlloc?`<span class="alloc-badge">${cell.total}u</span>`:''}
+        <span class="cost-note">${adjTime} min</span>
+        ${hasAlloc?`<span class="cost-note" style="color:var(--grn);font-size:9px;">${Object.entries(cell.btU).map(([bti,n])=>BT[bti]+':'+n).join(', ')}</span>`:''}
+      </td>`;
+    });
+    mxHtml+=`<td class="sup-cell">${bankSup}u${rowTotal>0?` <br><span style="color:var(--red);font-size:9px;">−${rowTotal}</span>`:''}</td></tr>`;
+  });
+  // Demand row
+  mxHtml+=`<tr class="dem-row"><td class="row-label" style="font-family:var(--fm);font-size:10px;color:var(--tx3);">Demand</td>
+    ${activeCols.map(hi=>`<td>${hFul[hi].dem}u</td>`).join('')}<td></td></tr></tbody></table>`;
+  document.getElementById('sol-matrix-wrap').innerHTML=mxHtml;
+
+  // ── ROUTES LIST ──
+  document.getElementById('sol-routes-list').innerHTML=routes.map((r,idx)=>{
+    const btList=Object.entries(r.btU).map(([bti,n])=>`${BT[bti]}:${n}`).join(', ');
+    return`<div class="rr ${idx<3?'top':''}">
+      <div class="rr-rank">${idx+1}</div>
+      <div class="rr-body">
+        <div class="rr-route"><span style="color:var(--grn);">${BANKS[r.bi]}</span><span style="color:var(--tx3);">→</span><span style="color:var(--red);">${HOSPITALS[r.hi]}</span></div>
+        <div class="rr-meta">${btList} · base ${r.baseTime}min${r.delay>0?' +'+r.delay+'min traffic':''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="rr-units">${r.total}u</div>
+        <div class="rr-time">${r.adjTime} min</div>
+      </div></div>`;
+  }).join('') || '<div class="empty" style="padding:20px;"><div class="empty-t">No allocations.</div></div>';
+
+  // ── HOSPITAL FULFILMENT ──
+  document.getElementById('sol-hosp-list').innerHTML=HOSPITALS.map((h,hi)=>{
+    const f=hFul[hi];
+    if(!f.dem) return'';
+    const pct=Math.round(f.got/f.dem*100);
+    const ok=pct>=100;
+    const btD=Object.entries(f.btBreak).map(([bi,n])=>`${BT[bi]}:${n}`).join(', ');
+    return`<div class="sb-card ${ok?'ok':'warn'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:500;">${h}</span>
+        <span class="tag ${ok?'g':'a'}">${pct}% met</span>
+      </div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--tx2);">Requested: ${f.dem}u · Allocated: ${f.got}u</div>
+      ${btD?`<div style="font-family:var(--fm);font-size:10px;color:var(--tx3);margin-top:2px;">${btD}</div>`:''}
+      <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%;background:${ok?'var(--grn)':'var(--amb)'}"></div></div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  // ── BANK SUMMARY ──
+  document.getElementById('sol-bank-list').innerHTML=BANKS.map((b,bi)=>{
+    const bd=bDisp[bi];
+    if(!bd.total) return'';
+    const btD=Object.entries(bd.btBreak).map(([bti,n])=>`${BT[bti]}:${n}`).join(', ');
+    return`<div class="sb-card ok">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:13px;font-weight:500;color:var(--grn);">${b}</span>
+        <span style="font-family:var(--fm);font-size:12px;font-weight:700;color:var(--grn);">${bd.total}u out</span>
+      </div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--tx2);">To: ${[...new Set(bd.hosps)].join(', ')}</div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--tx3);margin-top:2px;">${btD}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  // ── SHORTAGE BLOCK ──
+  if(sol.shortages&&sol.shortages.length){
+    document.getElementById('sol-shortage-block').innerHTML=sol.shortages.map(s=>
+      `<div style="background:var(--rdim);border:1px solid var(--rbr);border-radius:var(--r);padding:10px 14px;margin-bottom:8px;font-size:12px;color:var(--red);">
+        ⚠ <strong>${s.bt}</strong> — ${s.needed} units requested but <strong>no stock available</strong> in any bank. Contact regional coordinator.
+      </div>`).join('');
+  } else {
+    document.getElementById('sol-shortage-block').innerHTML='';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CONFIRM DISPATCH
+// ═══════════════════════════════════════════════════
+function confirmDispatch(){
+  if(!LAST_SOL) return;
+  const{routes}=LAST_SOL;
+  // Deduct inventory
+  routes.forEach(r=>{
+    Object.entries(r.btU).forEach(([bti,n])=>{
+      INV[r.bi][+bti]=Math.max(0,INV[r.bi][+bti]-n);
+    });
+  });
+  DISP_CNT+=REQS.length;
+  const batch={id:Date.now(),routes:[...routes],reqs:[...REQS],time:new Date()};
+  DISPATCHES.push(batch);
+  const rqLen=REQS.length;
+  REQS=[];
+  LAST_SOL=null;
+
+  addLog('s','Batch confirmed',`${routes.length} routes dispatched · ${rqLen} requests fulfilled.`);
+  const low=BANKS.filter((_,bi)=>INV[bi].some(v=>v<=2));
+  if(low.length) addLog('w','Low stock',`${low.join(', ')} — some types below threshold.`);
+
+  updateAll();
+
+  // Show confirmed state in solver
+  document.getElementById('sol-result').innerHTML=`
+    <div class="confirm-banner">
+      <div style="font-size:32px;margin-bottom:10px;">✓</div>
+      <div style="font-size:22px;font-weight:700;color:var(--grn);margin-bottom:6px;">Batch dispatch confirmed!</div>
+      <div style="font-size:13px;color:var(--tx2);">${routes.length} routes · inventory updated across ${new Set(routes.map(r=>r.bi)).size} banks</div>
+    </div>
+    <button class="btn red" style="max-width:280px;display:block;margin:0 auto;" onclick="resetSolver()">+ Start new batch</button>`;
+}
+
+function resetSolver(){
+  LAST_SOL=null;
+  const sr=document.getElementById('sol-result');
+  sr.style.display='none'; sr.innerHTML='';
+  const pc=document.getElementById('pre-card');
+  pc.style.display='block';
+  document.getElementById('sv-status').textContent='ready';
+  document.getElementById('sv-status').className='tag b';
+  document.getElementById('pre-body').innerHTML='<div class="empty" style="padding:20px;"><div class="empty-t">Add requests then click "Solve now".</div></div>';
+}
+
+// ═══════════════════════════════════════════════════
+// REQUESTS
+// ═══════════════════════════════════════════════════
+function addReq(){
+  const hi=+document.getElementById('rq-h').value;
+  const btStr=document.getElementById('rq-bt').value;
+  const bti=BT.indexOf(btStr);
+  const units=Math.max(1,+document.getElementById('rq-u').value||1);
+  const dept=document.getElementById('rq-dept').value;
+  const prio=document.getElementById('rq-prio').value;
+  const dv=document.getElementById('rq-dt').value;
+  const hour=dv?new Date(dv).getHours():new Date().getHours();
+  REQS.push({id:REQ_ID++,hi,btStr,bti,units,dept,prio,hour});
+  addLog('s','Request queued',`${HOSPITALS[hi]}: ${btStr} × ${units} (${dept})`);
+  updateAll();
+}
+
+function loadDemo(){
+  const samples=[
+    {hi:0,btStr:'O−',bti:0,units:8,dept:'Emergency/Trauma',prio:'critical'},
+    {hi:0,btStr:'A+',bti:3,units:4,dept:'Surgery',prio:'urgent'},
+    {hi:1,btStr:'B+',bti:5,units:6,dept:'ICU',prio:'urgent'},
+    {hi:2,btStr:'AB+',bti:7,units:2,dept:'Maternity',prio:'normal'},
+    {hi:3,btStr:'O+',bti:1,units:10,dept:'Emergency/Trauma',prio:'critical'},
+    {hi:4,btStr:'A−',bti:2,units:3,dept:'Surgery',prio:'urgent'},
+    {hi:5,btStr:'B−',bti:4,units:4,dept:'ICU',prio:'urgent'},
+    {hi:7,btStr:'O−',bti:0,units:5,dept:'Pediatrics',prio:'critical'},
+  ];
+  const hour=new Date().getHours();
+  samples.forEach(s=>REQS.push({id:REQ_ID++,...s,hour}));
+  addLog('s','Demo loaded',`${samples.length} sample requests from 7 hospitals queued.`);
+  updateAll();
+}
+
+function removeReq(id){REQS=REQS.filter(r=>r.id!==id);updateAll();}
+function clearReqs(){REQS=[];updateAll();}
+
+// ═══════════════════════════════════════════════════
+// UPDATE ALL UI
+// ═══════════════════════════════════════════════════
+function updateAll(){
+  updateTopbar();
+  updateDashboard();
+  updateReqList();
+  renderInv();
+}
+
+function updateTopbar(){
+  document.getElementById('tb-pend').textContent=REQS.length;
+  document.getElementById('tb-disp').textContent=DISP_CNT;
+  document.getElementById('nb1').textContent=REQS.length+DISPATCHES.length;
+  document.getElementById('nb2').textContent=REQS.length;
+}
+
+function updateDashboard(){
+  const totDem=REQS.reduce((s,r)=>s+r.units,0);
+  const totSup=INV.reduce((s,row)=>s+row.reduce((a,b)=>a+b,0),0);
+  document.getElementById('dm-pend').textContent=REQS.length;
+  document.getElementById('dm-dem').textContent=totDem;
+  document.getElementById('dm-sup').textContent=totSup;
+  document.getElementById('dm-disp').textContent=DISP_CNT;
+  document.getElementById('d-rtag').textContent=REQS.length+' pending';
+
+  // Pending by hospital
+  const el=document.getElementById('d-rlist');
+  if(!REQS.length){
+    el.innerHTML='<div class="empty"><div class="empty-i">◎</div><div class="empty-t">No requests yet.<br>Submit from Incoming Requests.</div></div>';
+  } else {
+    const byH={};
+    REQS.forEach(r=>{if(!byH[r.hi])byH[r.hi]=[];byH[r.hi].push(r);});
+    el.innerHTML=Object.entries(byH).map(([hi,rqs])=>{
+      const tot=rqs.reduce((s,r)=>s+r.units,0);
+      const chips=rqs.map(r=>`<span style="display:inline-block;background:var(--rdim);color:var(--red);border:1px solid var(--rbr);border-radius:3px;padding:1px 6px;font-family:var(--fm);font-size:9px;font-weight:600;margin:2px;">${r.btStr}:${r.units}</span>`).join('');
+      const hasCrit=rqs.some(r=>r.prio==='critical');
+      return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--br);">
+        <div class="pdot ${hasCrit?'critical':'urgent'}" style="margin-top:5px;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;">${HOSPITALS[hi]}</div>
+          <div style="margin-top:4px;">${chips}</div>
+        </div>
+        <div style="font-family:var(--fm);font-size:14px;font-weight:700;color:var(--amb);flex-shrink:0;">${tot}u</div>
+      </div>`;
+    }).join('')+`<div style="padding:10px 0 0;display:flex;justify-content:flex-end;">
+      <button class="btn blu sm" onclick="go('solver',document.querySelector('[onclick*=solver]'))">▶ Solve</button></div>`;
+  }
+
+  // Dispatches
+  const dl=document.getElementById('d-dlist');
+  document.getElementById('d-dbadge').textContent=DISPATCHES.length;
+  if(!DISPATCHES.length){
+    dl.innerHTML='<div class="empty" style="padding:20px;"><div class="empty-t">No dispatches confirmed yet.</div></div>';
+  } else {
+    dl.innerHTML=DISPATCHES.slice().reverse().map(d=>{
+      const t=d.time.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+      const summary=d.routes.map(r=>`${BANKS[r.bi]}→${H_SHORT[r.hi]}(${r.total}u)`).join(' · ');
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--br);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:500;">${d.routes.length} routes · ${d.reqs.length} hospitals</div>
+          <div style="font-family:var(--fm);font-size:10px;color:var(--tx2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${summary}</div>
+        </div>
+        <div style="font-family:var(--fm);font-size:10px;color:var(--tx3);flex-shrink:0;">${t}</div>
+        <span class="tag g">done</span>
+      </div>`;
+    }).join('');
+  }
+  updateDashChart();
+}
+
+function updateReqList(){
+  const el=document.getElementById('rq-list');
+  document.getElementById('rq-ctag').textContent=REQS.length+' queued';
+  if(!REQS.length){
+    el.innerHTML='<div class="empty"><div class="empty-i">◎</div><div class="empty-t">No requests queued.</div></div>';
+    return;
+  }
+  el.innerHTML=`<table class="tbl">
+    <thead><tr><th></th><th>Hospital</th><th>Blood type</th><th>Units</th><th>Dept</th><th>Traffic</th><th></th></tr></thead>
+    <tbody>${REQS.map(r=>{
+      const{m,l,c}=trf(r.hour);
+      return`<tr>
+        <td><div class="pdot ${r.prio}"></div></td>
+        <td class="name">${HOSPITALS[r.hi]}</td>
+        <td><span class="tag r">${r.btStr}</span></td>
+        <td style="font-family:var(--fm);font-weight:700;color:var(--amb);">${r.units}</td>
+        <td>${r.dept}</td>
+        <td><span style="font-family:var(--fm);font-size:10px;color:${c};">${l} ${m.toFixed(1)}×</span></td>
+        <td><button class="cact" onclick="removeReq(${r.id})" style="padding:2px 6px;font-size:9px;">✕</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ═══════════════════════════════════════════════════
+// COST MATRIX PAGE
+// ═══════════════════════════════════════════════════
+function renderCostMatrix(h){
+  document.getElementById('mx-hr-lbl').textContent=hl(h);
+  const m=TM[h];
+  const adj=BASE.map(row=>row.map(v=>Math.round(v*m)));
+  const sup=INV.map(row=>row.reduce((s,v)=>s+v,0));
+  const dem=[14,12,10,16,8,12,10,12];
+  const assigns=vogel(adj,[...sup],[...dem]);
+  const optSet=new Set(assigns.map(a=>`${a.bi}-${a.bj}`));
+
+  const thead=`<thead><tr><th class="corner row-h">Bank \\ Hospital</th>${H_SHORT.map(h=>`<th>${h}</th>`).join('')}<th>Supply</th></tr></thead>`;
+  const tbody=`<tbody>
+    ${BANKS.map((b,bi)=>`<tr>
+      <td class="row-label">${b}</td>
+      ${adj[bi].map((v,hi)=>`<td class="${optSet.has(bi+'-'+hi)?'c-opt':v>30?'c-hi':''}">${v}</td>`).join('')}
+      <td class="sup-cell">${sup[bi]}</td>
+    </tr>`).join('')}
+    <tr class="dem-row"><td class="row-label" style="font-family:var(--fm);font-size:10px;color:var(--tx3);">Demand</td>${dem.map(d=>`<td>${d}</td>`).join('')}<td></td></tr>
+  </tbody>`;
+  document.getElementById('mx-full').innerHTML=thead+tbody;
+
+  // VAM list
+  assigns.sort((a,b)=>a.cost-b.cost);
+  let tot=0;
+  document.getElementById('mx-vam').innerHTML=assigns.map((a,i)=>{
+    tot+=a.units*a.cost;
+    return`<div class="rr ${i<2?'top':''}">
+      <div class="rr-rank">${i+1}</div>
+      <div class="rr-body">
+        <div class="rr-route"><span style="color:var(--grn);">${BANKS[a.bi]}</span><span style="color:var(--tx3);">→</span><span style="color:var(--red);">${H_SHORT[a.bj]}</span></div>
+        <div class="rr-meta">${a.units}u · ${a.cost}min</div>
+      </div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--tx2);">${a.units*a.cost}</div>
+    </div>`;
+  }).join('')+`<div style="padding:8px 0 0;border-top:1px solid var(--br);font-family:var(--fm);font-size:10px;color:var(--grn);text-align:right;">Total: ${tot} unit·min</div>`;
+}
+
+function initMxChart(){
+  const ctx=document.getElementById('mx-chart');
+  if(!ctx||mxChart) return;
+  const labels=Array.from({length:24},(_,i)=>i===0?'12a':i===12?'12p':i<12?i+'a':(i-12)+'p');
+  mxChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{data:TM,
+      backgroundColor:TM.map(v=>v>=1.7?'rgba(255,69,96,0.65)':v>=1.3?'rgba(255,179,64,0.55)':'rgba(0,229,160,0.42)'),
+      borderRadius:2,borderSkipped:false}]},
+    options:{responsive:true,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>` ${c.parsed.y.toFixed(1)}× — ${TL[c.dataIndex]}`}}},
+      scales:{
+        y:{min:0.8,max:2.3,ticks:{color:'#363d5e',font:{size:9}},grid:{color:'rgba(99,120,255,0.05)'},border:{color:'transparent'}},
+        x:{ticks:{color:'#363d5e',font:{size:8},maxTicksLimit:12},grid:{display:false},border:{color:'transparent'}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// INVENTORY
+// ═══════════════════════════════════════════════════
+function cc(v){return v<=0?'cz':v<=2?'clo':v<=5?'ca2':v>=12?'cv':'';}
+
+function renderInv(){
+  const el=document.getElementById('inv-body');
+  if(!el) return;
+  el.innerHTML=BANKS.map((b,bi)=>{
+    const tot=INV[bi].reduce((s,v)=>s+v,0);
+    const low=INV[bi].some(v=>v<=2);
+    const cells=INV[bi].map(v=>`<td class="${cc(v)}">${v}</td>`).join('');
+    return`<tr><td>${b}</td>${cells}<td style="font-weight:600;color:var(--tx);">${tot}</td><td>${low?'<span class="tag r">⚠ Low</span>':'<span class="tag g">● Good</span>'}</td></tr>`;
+  }).join('');
+  const ln=BANKS.filter((_,bi)=>INV[bi].some(v=>v<=2)).length;
+  const t=document.getElementById('inv-tag');
+  if(t){t.textContent=ln+' alert'+(ln!==1?'s':'');t.className='tag '+(ln?'r':'g');}
+  updateInvChart();
+}
+
+function updateInvChart(){
+  const ctx=document.getElementById('inv-chart');
+  if(!ctx) return;
+  if(invChart) invChart.destroy();
+  const sup=BT.map((_,bi)=>INV.reduce((s,row)=>s+row[bi],0));
+  const dem=BT.map((_,bi)=>REQS.reduce((s,r)=>s+(r.bti===bi?r.units:0),0));
+  invChart=new Chart(ctx,{type:'bar',data:{labels:BT,datasets:[
+    {label:'Supply',data:sup,backgroundColor:'rgba(0,229,160,0.4)',borderColor:'rgba(0,229,160,0.7)',borderWidth:1,borderRadius:3},
+    {label:'Demand',data:dem,backgroundColor:'rgba(255,69,96,0.38)',borderColor:'rgba(255,69,96,0.65)',borderWidth:1,borderRadius:3}
+  ]},options:{responsive:true,
+    plugins:{legend:{labels:{color:'#6b78aa',font:{size:10},boxWidth:12}}},
+    scales:{
+      y:{ticks:{color:'#363d5e',font:{size:10}},grid:{color:'rgba(99,120,255,0.05)'},border:{color:'transparent'}},
+      x:{ticks:{color:'#6b78aa',font:{size:11}},grid:{display:false},border:{color:'transparent'}}
+    }
+  }});
+}
+
+function updateDashChart(){
+  const ctx=document.getElementById('dash-chart');
+  if(!ctx) return;
+  if(dashChart) dashChart.destroy();
+  const sup=BT.map((_,bi)=>INV.reduce((s,row)=>s+row[bi],0));
+  const dem=BT.map((_,bi)=>REQS.reduce((s,r)=>s+(r.bti===bi?r.units:0),0));
+  dashChart=new Chart(ctx,{type:'bar',data:{labels:BT,datasets:[
+    {label:'Supply',data:sup,backgroundColor:'rgba(0,229,160,0.35)',borderColor:'rgba(0,229,160,0.6)',borderWidth:1,borderRadius:3},
+    {label:'Demand',data:dem,backgroundColor:'rgba(255,69,96,0.35)',borderColor:'rgba(255,69,96,0.6)',borderWidth:1,borderRadius:3}
+  ]},options:{responsive:true,
+    plugins:{legend:{labels:{color:'#6b78aa',font:{size:10},boxWidth:12}}},
+    scales:{
+      y:{ticks:{color:'#363d5e',font:{size:10}},grid:{color:'rgba(99,120,255,0.05)'},border:{color:'transparent'}},
+      x:{ticks:{color:'#6b78aa',font:{size:11}},grid:{display:false},border:{color:'transparent'}}
+    }
+  }});
+}
+
+// ═══════════════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════════════
+function addLog(type,title,body){
+  const el=document.getElementById('d-log');
+  if(!el) return;
+  const t=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+  const d=document.createElement('div');
+  d.className='alog '+(type==='s'?'s':type==='w'?'w':'d');
+  d.innerHTML=`<div class="al-t">${title}</div><div class="al-b">${body}</div><div class="al-s">${t}</div>`;
+  el.prepend(d);
+  while(el.children.length>8) el.removeChild(el.lastChild);
+}
+function clearLog(){document.getElementById('d-log').innerHTML='';}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function go(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  if(el) el.classList.add('on');
+  if(id==='matrix'){renderCostMatrix(8);setTimeout(initMxChart,80);}
+  if(id==='inventory'){renderInv();}
+  if(id==='solver'&&REQS.length&&!LAST_SOL){
+    const{btd,hospDem,totalUnits,hour,mult,trfLbl,trfC}=aggregateDemand();
+    renderPreSolve(btd,hospDem,totalUnits,mult,trfLbl,trfC,hour);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+(function(){
+  const now=new Date(),pad=n=>String(n).padStart(2,'0');
+  document.getElementById('rq-dt').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  updateTrfPrev();
+  updateAll();
+  renderInv();
+})();
+</script>
+</body>
+</html>
